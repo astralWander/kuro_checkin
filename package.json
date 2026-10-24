@@ -4,9 +4,7 @@
   "description": "库街区账号管理工具：登录取 Token、每日自动签到",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test:captcha": "node test/captcha.js",
-    "test:toast": "node test/toast-replay.js"
+    "start": "node src/server.js"
   },
   "keywords": [
     "kuro",

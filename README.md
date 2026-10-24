@@ -29,9 +29,6 @@ kuro-checkin/
 │   ├── app.js          前端交互
 │   └── lib/
 │       └── anime.v4.min.js   动画库
-├── test/
-│   ├── captcha.js      滑块验证测试
-│   └── toast-replay.js 通知动画测试
 ├── data/               运行后自动生成，存放账号数据
 ├── package.json
 ├── LICENSE
@@ -81,9 +78,6 @@ PORT=8080 HOST=0.0.0.0 node src/server.js
 
 [GPL-3.0](LICENSE)
 
-参考项目：
-
-- [Kuro_login](https://github.com/mxyooR/Kuro_login)
-- [Kuro-autosignin](https://github.com/mxyooR/Kuro-autosignin)
+参考项目：Kuro_login、Kuro-autosignin
 
 仅供学习交流使用，请勿用于非法用途。
