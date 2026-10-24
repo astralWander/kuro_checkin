@@ -28,18 +28,60 @@ function emit(event) {
   }
 }
 
-/** 计算下一个 HH:MM 的时间戳（本地时区） */
-function nextOccurrence(hhmm, from = Date.now()) {
+/** 计算下一个 HH:MM 的时间戳（固定按指定时区解释，不依赖服务器系统时区） */
+const TIMEZONE = process.env.TIMEZONE || 'Asia/Shanghai';
+
+/** 取某个时间戳在指定时区的年月日时分 */
+function zonedParts(ts, tz) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const p = {};
+  for (const part of fmt.formatToParts(new Date(ts))) p[part.type] = part.value;
+  return {
+    y: Number(p.year),
+    mo: Number(p.month),
+    d: Number(p.day),
+    h: Number(p.hour) % 24, // 某些环境午夜会给 24
+    mi: Number(p.minute),
+    s: Number(p.second),
+  };
+}
+
+/** 把「指定时区的某个本地时刻」换算成 UTC 时间戳（迭代收敛，含跨日/跨月） */
+function zonedToTs(y, mo, d, h, mi, tz) {
+  const desired = Date.UTC(y, mo - 1, d, h, mi, 0);
+  let ts = desired;
+  for (let i = 0; i < 4; i++) {
+    const p = zonedParts(ts, tz);
+    const actual = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s);
+    const err = desired - actual;
+    if (err === 0) break;
+    ts += err;
+  }
+  return ts;
+}
+
+function nextOccurrence(hhmm, from = Date.now(), tz = TIMEZONE) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
   if (!m) return null;
   const hh = Number(m[1]);
   const mm = Number(m[2]);
   if (hh > 23 || mm > 59) return null;
 
-  const d = new Date(from);
-  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
-  if (target.getTime() <= from) target.setDate(target.getDate() + 1);
-  return target.getTime();
+  const now = zonedParts(from, tz);
+  let target = zonedToTs(now.y, now.mo, now.d, hh, mm, tz);
+  if (target <= from) {
+    target = zonedToTs(now.y, now.mo, now.d + 1, hh, mm, tz);
+  }
+  return target;
 }
 
 /** 依次签所有启用的账号，返回结果数组 */
@@ -130,9 +172,28 @@ function status() {
     autoSign: s.autoSign,
     time: s.time,
     nextRunAt,
+    nextRunLabel: nextRunAt ? formatLabel(nextRunAt) : null,
+    timezone: TIMEZONE,
     lastRun,
     running,
   };
+}
+
+/** 生成「今天/明天 HH:MM」标签，按调度时区计算 */
+function formatLabel(ts) {
+  const t = zonedParts(ts, TIMEZONE);
+  const n = zonedParts(Date.now(), TIMEZONE);
+  const p = (x) => String(x).padStart(2, '0');
+  const todayKey = `${n.y}-${n.mo}-${n.d}`;
+  const targetKey = `${t.y}-${t.mo}-${t.d}`;
+  let day;
+  if (targetKey === todayKey) day = '今天';
+  else {
+    // 判断是不是明天：把今天的日期 +1 再比较
+    const tomorrow = zonedParts(zonedToTs(n.y, n.mo, n.d + 1, 0, 0, TIMEZONE) + 12 * 3600e3, TIMEZONE);
+    day = `${tomorrow.y}-${tomorrow.mo}-${tomorrow.d}` === targetKey ? '明天' : `${t.mo}月${t.d}日`;
+  }
+  return `${day} ${p(t.h)}:${p(t.mi)}`;
 }
 
 module.exports = { runAll, reschedule, status, onChange, nextOccurrence };

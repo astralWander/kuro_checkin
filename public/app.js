@@ -504,6 +504,23 @@
     return data;
   }
 
+  // 统一按服务端时区格式化（避免服务器与浏览器时区不一致导致显示错位）
+  const TZ = (state.status && state.status.timezone) || 'Asia/Shanghai';
+
+  function tzParts(ts) {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const p = {};
+    for (const part of fmt.formatToParts(new Date(ts))) p[part.type] = part.value;
+    return {
+      y: Number(p.year), mo: Number(p.month), d: Number(p.day),
+      h: Number(p.hour) % 24, mi: Number(p.minute), s: Number(p.second),
+    };
+  }
+
   function timeAgo(ts) {
     if (!ts) return '';
     const diff = Date.now() - ts;
@@ -514,9 +531,9 @@
   }
 
   function clockText(ts) {
-    const d = new Date(ts);
+    const t = tzParts(ts);
     const p = (n) => String(n).padStart(2, '0');
-    return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    return `${p(t.mo)}-${p(t.d)} ${p(t.h)}:${p(t.mi)}`;
   }
 
   /* ============================================================
@@ -534,12 +551,8 @@
       el.nextRun.textContent = '正在签到…';
     } else if (!s.autoSign) {
       el.nextRun.textContent = '已关闭';
-    } else if (st.nextRunAt) {
-      const d = new Date(st.nextRunAt);
-      const p = (n) => String(n).padStart(2, '0');
-      const today = new Date();
-      const isToday = d.toDateString() === today.toDateString();
-      el.nextRun.textContent = `下次 ${isToday ? '今天' : '明天'} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    } else if (st.nextRunLabel) {
+      el.nextRun.textContent = `下次 ${st.nextRunLabel}`;
     } else {
       el.nextRun.textContent = '—';
     }
@@ -834,14 +847,14 @@
   };
 
   function fullTime(ts) {
-    const d = new Date(ts);
-    const p = (n) => String(n).padStart(2, '0');
-    const today = new Date();
-    const sameDay = d.toDateString() === today.toDateString();
+    const t = tzParts(ts);
+    const n = tzParts(Date.now());
+    const p = (x) => String(x).padStart(2, '0');
+    const sameDay = t.y === n.y && t.mo === n.mo && t.d === n.d;
     const date = sameDay
       ? '今天'
-      : `${d.getFullYear() === today.getFullYear() ? '' : d.getFullYear() + '-'}${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    return `${date} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+      : `${t.y === n.y ? '' : t.y + '-'}${p(t.mo)}-${p(t.d)}`;
+    return `${date} ${p(t.h)}:${p(t.mi)}:${p(t.s)}`;
   }
 
   async function openLogs(acc) {
