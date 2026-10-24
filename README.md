@@ -1,0 +1,86 @@
+# kuro-checkin
+
+库街区（Kuro BBS）账号管理工具。在浏览器里添加账号，每天自动完成游戏签到与论坛每日任务，签到记录留存在本地。
+
+## 功能
+
+- **账号管理**：手机号 + 短信验证码登录，账号信息保存在本机
+- **自动签到**：添加账号时立即签到一次，之后每天在设定的时间自动签到
+- **签到内容**：鸣潮、战双游戏签到，论坛每日任务（浏览、点赞、分享），自动补签
+- **签到日志**：每个账号保留最近 60 次签到记录，随时回看
+- **实时反馈**：签到过程与结果直接显示在页面上，无需刷新
+
+## 目录结构
+
+```
+kuro-checkin/
+├── src/
+│   ├── server.js       服务入口，HTTP 路由
+│   ├── kuro.js         登录相关接口
+│   ├── bbs.js          签到相关接口
+│   ├── signin.js       签到流程（游戏签到 / 论坛任务 / 补签）
+│   ├── geetest.js      滑块验证处理
+│   ├── imagematch.js   验证图片比对
+│   ├── store.js        账号与设置的本地存储
+│   └── scheduler.js    每日定时任务
+├── public/
+│   ├── index.html      页面
+│   ├── style.css       样式
+│   ├── app.js          前端交互
+│   └── lib/
+│       └── anime.v4.min.js   动画库
+├── test/
+│   ├── captcha.js      滑块验证测试
+│   └── toast-replay.js 通知动画测试
+├── data/               运行后自动生成，存放账号数据
+├── package.json
+├── LICENSE
+└── README.md
+```
+
+## 部署
+
+需要 Node.js 18 或更高版本。
+
+```bash
+git clone https://github.com/astralWander/kuro_checkin.git
+cd kuro_checkin
+npm install
+npm start
+```
+
+启动后打开 http://127.0.0.1:8787
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PORT` | `8787` | 服务端口 |
+| `HOST` | `127.0.0.1` | 监听地址。设为 `0.0.0.0` 可供局域网访问 |
+| `DATA_DIR` | `./data` | 数据存放目录 |
+
+示例：
+
+```bash
+PORT=8080 HOST=0.0.0.0 node src/server.js
+```
+
+### 使用
+
+1. 打开页面，点「添加账号」
+2. 输入手机号，点「获取验证码」
+3. 填入收到的短信验证码，点「登录并添加」
+4. 账号添加后会立即签到一次，结果直接显示在卡片上
+5. 首页可设置每日签到时间、开关自动签到与自动补签
+
+## 数据说明
+
+账号与签到记录保存在 `data/accounts.json`，其中包含登录令牌，请勿上传或分享该文件。
+
+## 许可证
+
+[GPL-3.0](LICENSE)
+
+本项目由 [Kuro_login](https://github.com/mxyooR/Kuro_login) 与 [Kuro-autosignin](https://github.com/mxyooR/Kuro-autosignin) 改写而来。
+
+仅供学习交流使用。

@@ -1,0 +1,13 @@
+# 依赖与数据
+node_modules/
+data/
+
+# 日志与临时文件
+*.log
+*.tmp
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+.DS_Store

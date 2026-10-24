@@ -1,0 +1,24 @@
+{
+  "name": "kuro-checkin",
+  "version": "1.0.0",
+  "description": "库街区账号管理工具：登录取 Token、每日自动签到",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test:captcha": "node test/captcha.js",
+    "test:toast": "node test/toast-replay.js"
+  },
+  "keywords": [
+    "kuro",
+    "kurobbs",
+    "checkin",
+    "signin"
+  ],
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}
