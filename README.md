@@ -81,6 +81,4 @@ PORT=8080 HOST=0.0.0.0 node src/server.js
 
 [GPL-3.0](LICENSE)
 
-本项目由 [Kuro_login](https://github.com/mxyooR/Kuro_login) 与 [Kuro-autosignin](https://github.com/mxyooR/Kuro-autosignin) 改写而来。
-
-仅供学习交流使用。
+仅供学习交流使用，请勿用于非法用途。
