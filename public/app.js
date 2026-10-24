@@ -844,6 +844,7 @@
     single: '手动',
     manual: '手动',
     schedule: '定时',
+    catchup: '补跑',
   };
 
   function fullTime(ts) {
@@ -1244,10 +1245,12 @@
       if (data.type === 'done') {
         state.status = { ...state.status, running: false };
         await refresh();
+        const ok = (data.results || []).filter((r) => r.ok && !r.skipped).length;
+        const total = (data.results || []).filter((r) => !r.skipped).length;
         if (data.trigger === 'schedule') {
-          const ok = (data.results || []).filter((r) => r.ok && !r.skipped).length;
-          const total = (data.results || []).filter((r) => !r.skipped).length;
           fx.toast(`自动签到完成 · ${ok}/${total} 成功`);
+        } else if (data.trigger === 'catchup') {
+          fx.toast(`补跑完成 · ${ok}/${total} 成功`);
         }
         return;
       }

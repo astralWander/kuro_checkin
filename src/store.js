@@ -13,6 +13,7 @@ const DEFAULT = {
     autoSign: true,
     time: '08:30', // 每天自动签到的时刻 HH:MM
     autoReplenish: true, // 是否自动补签
+    lastScheduleAt: 0, // 上一次定时签到实际执行的时间戳，用于判断是否漏跑
   },
   accounts: [],
 };
@@ -167,7 +168,18 @@ function removeAccount(id) {
   return true;
 }
 
+/** 对外返回的设置（内部字段不暴露给前端） */
 function getSettings() {
+  const s = load().settings;
+  return {
+    autoSign: s.autoSign,
+    time: s.time,
+    autoReplenish: s.autoReplenish,
+  };
+}
+
+/** 内部读取，含 lastScheduleAt 等调度状态 */
+function getSettingsInternal() {
   return load().settings;
 }
 
@@ -189,6 +201,7 @@ module.exports = {
   removeAccount,
   appendSignLog,
   getSettings,
+  getSettingsInternal,
   updateSettings,
   save,
   load,

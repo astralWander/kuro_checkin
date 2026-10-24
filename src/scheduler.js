@@ -2,7 +2,7 @@
 // 每日定时签到 —— 对应 Kuro-autosignin 的 task_scheduler.py（原版靠 cron）
 // 这里用自校正的单次 setTimeout：每次触发后重新计算「下一个 HH:MM」，
 // 不累积漂移，也能自然应对系统时间/时区变化与进程长时间挂起。
-const { listAccounts, getSettings, updateAccount, appendSignLog } = require('./store.js');
+const { listAccounts, getSettingsInternal, updateAccount, updateSettings, appendSignLog } = require('./store.js');
 const { signAccount } = require('./signin.js');
 
 const MAX_TIMEOUT = 2 ** 31 - 1; // setTimeout 上限约 24.8 天
@@ -84,11 +84,32 @@ function nextOccurrence(hhmm, from = Date.now(), tz = TIMEZONE) {
   return target;
 }
 
+/** 计算最近一个「已经过去」的 HH:MM 时间戳（今天或昨天），用于判断是否漏跑 */
+function prevOccurrence(hhmm, from = Date.now(), tz = TIMEZONE) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (hh > 23 || mm > 59) return null;
+
+  const now = zonedParts(from, tz);
+  let target = zonedToTs(now.y, now.mo, now.d, hh, mm, tz);
+  if (target > from) {
+    target = zonedToTs(now.y, now.mo, now.d - 1, hh, mm, tz);
+  }
+  return target;
+}
+
 /** 依次签所有启用的账号，返回结果数组 */
 async function runAll(trigger = 'manual') {
   if (running) return { skipped: true, reason: '已有签到任务在执行' };
   running = true;
   emit({ type: 'start', trigger });
+
+  // 定时执行时记下时间，重启后据此判断是否漏跑
+  if (trigger === 'schedule' || trigger === 'catchup') {
+    updateSettings({ lastScheduleAt: Date.now() });
+  }
 
   const results = [];
   try {
@@ -140,7 +161,7 @@ function reschedule() {
     clearTimeout(timer);
     timer = null;
   }
-  const s = getSettings();
+  const s = getSettingsInternal();
   if (!s.autoSign) {
     nextRunAt = null;
     emit({ type: 'schedule', nextRunAt: null });
@@ -166,8 +187,39 @@ function reschedule() {
   emit({ type: 'schedule', nextRunAt });
 }
 
+/**
+ * 启动时检查是否漏跑了当天的定时签到。
+ * 判据：最近一个已过去的 HH:MM 晚于上次定时执行时间 → 说明那一次没跑成（进程当时不在）。
+ * 漏了就立刻补跑，避免重启后静默跳过一次。
+ */
+async function catchUpIfMissed() {
+  const s = getSettingsInternal();
+  if (!s.autoSign) return { ran: false, reason: '自动签到已关闭' };
+
+  const due = prevOccurrence(s.time);
+  if (!due) return { ran: false, reason: '时间格式不正确' };
+
+  const last = Number(s.lastScheduleAt || 0);
+  if (last >= due) return { ran: false, reason: '没有漏跑' };
+
+  // 从未执行过（last === 0）也补跑，但排除「刚部署还没到点」的情况
+  if (last === 0) {
+    const next = nextOccurrence(s.time);
+    if (!next) return { ran: false, reason: '时间格式不正确' };
+  }
+
+  // 太久远的不补（超过 24 小时说明是长期停摆，补了也没意义）
+  if (Date.now() - due > 24 * 3600e3) {
+    return { ran: false, reason: '错过时间超过 24 小时，跳过' };
+  }
+
+  emit({ type: 'catchup', dueAt: due });
+  const r = await runAll('catchup');
+  return { ran: true, dueAt: due, results: r.results };
+}
+
 function status() {
-  const s = getSettings();
+  const s = getSettingsInternal();
   return {
     autoSign: s.autoSign,
     time: s.time,
@@ -196,4 +248,12 @@ function formatLabel(ts) {
   return `${day} ${p(t.h)}:${p(t.mi)}`;
 }
 
-module.exports = { runAll, reschedule, status, onChange, nextOccurrence };
+module.exports = {
+  runAll,
+  reschedule,
+  status,
+  onChange,
+  nextOccurrence,
+  prevOccurrence,
+  catchUpIfMissed,
+};

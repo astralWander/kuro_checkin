@@ -406,13 +406,23 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, url.pathname);
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
   scheduler.reschedule();
   console.log(`库街区账号管家已启动: http://${HOST}:${PORT}`);
   const s = store.getSettings();
   console.log(
-    s.autoSign
-      ? `自动签到已开启，每天 ${s.time}`
-      : '自动签到未开启'
+    s.autoSign ? `自动签到已开启，每天 ${s.time}` : '自动签到未开启'
   );
+
+  // 启动时补跑：如果当天定时签到因进程不在而错过，立刻补上
+  if (s.autoSign && store.listAccounts().length > 0) {
+    try {
+      const r = await scheduler.catchUpIfMissed();
+      if (r.ran) {
+        console.log(`检测到定时签到被错过（原定 ${new Date(r.dueAt).toISOString()}），已补跑 ${r.results.length} 个账号`);
+      }
+    } catch (err) {
+      console.error('补跑检查失败:', err.message);
+    }
+  }
 });
